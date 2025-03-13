@@ -4,6 +4,7 @@ import sys
 import os
 import base64
 
+import httpx
 import asyncio
 from aiocache import cached
 from typing import Any, Optional
@@ -16,6 +17,8 @@ import ast
 
 from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor
+from pydantic import BaseModel
+from typing import List, Dict
 
 
 from fastapi import Request
@@ -624,6 +627,8 @@ def apply_params_to_form_data(form_data, model):
 
 async def process_chat_payload(request, form_data, user, metadata, model):
 
+    log.error("MIDDLEWARE: Processing chat payload")
+
     form_data = apply_params_to_form_data(form_data, model)
     log.debug(f"form_data: {form_data}")
 
@@ -665,6 +670,28 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
     user_message = get_last_user_message(form_data["messages"])
     model_knowledge = model.get("info", {}).get("meta", {}).get("knowledge", False)
+    log.error(f"MIDDLEWARE: Checking for auto_memory, ENABLE_AUTO_MEMORY={request.app.state.config.ENABLE_AUTO_MEMORY}")
+    if hasattr(request.app.state.config, "ENABLE_AUTO_MEMORY") and request.app.state.config.ENABLE_AUTO_MEMORY and user_message:
+        if len(user_message) > 4: 
+            log.debug(f"Sheduling auto memory for message: {user_message[:10]}...")
+
+            from fastapi import BackgroundTasks
+            from open_webui.routers.tasks import generate_auto_memory
+            background_tasks = BackgroundTasks()
+            background_tasks.add_task(
+                generate_auto_memory,
+                request,
+                {
+                    "model": model.get("id"),
+                    "messages": form_data["messages"],
+                    "chat_id": metadata.get("chat_id")
+                },
+                user
+            )   
+
+
+            request.state.background = background_tasks
+            log.debug(f"Auto memory using model : {task_model_id}")
 
     if model_knowledge:
         await event_emitter(
@@ -840,7 +867,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             )
         else:
             form_data["messages"] = add_or_update_system_message(
-                rag_template(
+                rag_template(                    
                     request.app.state.config.RAG_TEMPLATE, context_string, prompt
                 ),
                 form_data["messages"],

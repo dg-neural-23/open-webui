@@ -104,6 +104,9 @@ from open_webui.config import (
     OPENAI_API_CONFIGS,
     # Direct Connections
     ENABLE_DIRECT_CONNECTIONS,
+    # Auto Memory
+    ENABLE_AUTO_MEMORY,
+    AUTO_MEMORY_PROMPT_TEMPLATE,
     # Code Execution
     ENABLE_CODE_EXECUTION,
     CODE_EXECUTION_ENGINE,
@@ -606,7 +609,6 @@ app.state.config.BING_SEARCH_V7_ENDPOINT = BING_SEARCH_V7_ENDPOINT
 app.state.config.BING_SEARCH_V7_SUBSCRIPTION_KEY = BING_SEARCH_V7_SUBSCRIPTION_KEY
 app.state.config.EXA_API_KEY = EXA_API_KEY
 app.state.config.PERPLEXITY_API_KEY = PERPLEXITY_API_KEY
-
 app.state.config.RAG_WEB_SEARCH_RESULT_COUNT = RAG_WEB_SEARCH_RESULT_COUNT
 app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS = RAG_WEB_SEARCH_CONCURRENT_REQUESTS
 app.state.config.RAG_WEB_LOADER_ENGINE = RAG_WEB_LOADER_ENGINE
@@ -759,7 +761,8 @@ app.state.speech_speaker_embeddings_dataset = None
 app.state.config.TASK_MODEL = TASK_MODEL
 app.state.config.TASK_MODEL_EXTERNAL = TASK_MODEL_EXTERNAL
 
-
+app.state.config.AUTO_MEMORY_PROMPT_TEMPLATE = AUTO_MEMORY_PROMPT_TEMPLATE
+app.state.config.ENABLE_AUTO_MEMORY = ENABLE_AUTO_MEMORY
 app.state.config.ENABLE_SEARCH_QUERY_GENERATION = ENABLE_SEARCH_QUERY_GENERATION
 app.state.config.ENABLE_RETRIEVAL_QUERY_GENERATION = ENABLE_RETRIEVAL_QUERY_GENERATION
 app.state.config.ENABLE_AUTOCOMPLETE_GENERATION = ENABLE_AUTOCOMPLETE_GENERATION
@@ -852,7 +855,15 @@ async def inspect_websocket(request: Request, call_next):
                 content={"detail": "Invalid WebSocket upgrade request"},
             )
     return await call_next(request)
+#new middleware for background tasks 
+@app.middleware("http")
+async def run_background_tasks(request:Request,call_next):
+    response = await call_next(request)
 
+    if hasattr(request.state, "background"):
+        log.debug(f"Running background tasks from request state")
+        response.background = request.state.background
+    return response
 
 app.add_middleware(
     CORSMiddleware,

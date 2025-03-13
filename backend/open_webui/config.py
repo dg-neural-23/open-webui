@@ -1293,7 +1293,7 @@ AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE = PersistentConfig(
 
 
 DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE = """### Task:
-You are an autocompletion system. Continue the text in `<text>` based on the **completion type** in `<type>` and the given language.  
+You are system. Continue the text in `<text>` based on the **completion type** in `<type>` and the given language.  
 
 ### **Instructions**:
 1. Analyze `<text>` for context and meaning.  
@@ -1374,6 +1374,48 @@ DEFAULT_MOA_GENERATION_PROMPT_TEMPLATE = """You have been provided with a set of
 Your task is to synthesize these responses into a single, high-quality response. It is crucial to critically evaluate the information provided in these responses, recognizing that some of it may be biased or incorrect. Your response should not simply replicate the given answers but should offer a refined, accurate, and comprehensive reply to the instruction. Ensure your response is well-structured, coherent, and adheres to the highest standards of accuracy and reliability.
 
 Responses from models: {{responses}}"""
+#new
+ENABLE_AUTO_MEMORY = PersistentConfig(
+    "ENABLE_AUTO_MEMORY",
+    "task.auto_memory.enable",
+    os.environ.get("ENABLE_AUTO_MEMORY", "True").lower() == "true",
+)
+DEFAULT_AUTO_MEMORY_PROMPT_TEMPLATE = """### Task:
+You are strict agent which extract key information about the user from the conversation history, that would be valuable to remember for future interactions.
+### **Instructions**:
+- You are totally focus on extracting specific, actionable information about the user in these categories and this strict format !!! no exeptions:
+  - Personal goals and plans
+  - Preferences and dislikes
+  - Interests and hobbies
+  <|THE MOST IMPORTANT|>
+  - Technical challenges or problems
+  - Important life events or milestones
+  - Professional background or skills
+- Extract only factual information explicitly stated by the user
+- Use user name to correctly generate memory senstense
+- Use full words 
+- Do not include speculative information or assumptions
+- Ignore temporary states or trivial details unlikely to be relevant in future conversations
+- Return information in a consistent, neutral tone
+- If no relevant information is found, return an empty list
+### **Output Rules**:
+Return a STRICT JSON-compatible array of strings, with each string representing a single piece of memorable information:
+[ "1.Has a project deadline on Friday for work, 
+   2.<user> wants to learn english,
+   3.Looking for good idea for work
+" ]
+If no information is found, return: `[]`
+### Chat History:
+<chat_history>
+{{MESSAGES:END:12}}
+</chat_history>
+"""
+
+AUTO_MEMORY_PROMPT_TEMPLATE = PersistentConfig(
+    "AUTO_MEMORY_PROMPT_TEMPLATE",
+    "task.auto_memory.prompt_template",
+    os.environ.get("AUTO_MEMORY_PROMPT_TEMPLATE", ""),
+)
 
 
 ####################################

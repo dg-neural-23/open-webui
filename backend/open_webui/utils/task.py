@@ -337,3 +337,15 @@ def moa_response_generation_template(
 def tools_function_calling_generation_template(template: str, tools_specs: str) -> str:
     template = template.replace("{{TOOLS}}", tools_specs)
     return template
+
+def auto_memory_template(template:str,messages: list[dict], user: Optional[dict]) -> str:
+    prompt = get_last_user_message(messages)
+    template = replace_prompt_variable(template,prompt)
+    template = replace_messages_variable(template, messages)
+
+    template = prompt_template(
+        template,
+        **({"user_name": user.get("name"), "user_location":user.get("location")}
+           if user else {})
+    )
+    return template
